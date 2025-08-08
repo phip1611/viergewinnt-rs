@@ -1,0 +1,16 @@
+[package]
+name = "viergewinnt-rs"
+description = """
+A Rust implementation of the game _Vier gewinnt_, also kown as _Connect Four_ or
+_Captain’s mistress_. The crate exposes a CLI where you can play against the
+computer. The computer performs a minmax search to look for good moves.
+"""
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[dependencies]
