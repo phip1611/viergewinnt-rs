@@ -2,9 +2,14 @@ use crate::{Gameboard, Player};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
-/// minmax step of updating the board and getting the current score for the current player.
-/// Recursively calls the minmax function [`_check_move_recursive_minmax`] again.
-fn minmax_step<const W: usize, const H: usize>(
+/// Searches for the best possible move for the current player at the given
+/// search depth using the minimax algorithm, with optional parallelization at
+/// the top search level.
+///
+/// This function evaluates all legal moves from the current game state by
+/// simulating each move, updating the game board, and performing a recursive
+/// minimax search via [`minmax_search_recursive`].
+fn search_best_move_in_depth<const W: usize, const H: usize>(
     gameboard: &Gameboard<W, H>,
     target_player: Player,
     current_player: Player,
@@ -20,7 +25,7 @@ fn minmax_step<const W: usize, const H: usize>(
 
     // Inserts the player coin, updates the field, and performs a recursive
     // search for following moves.
-    let fn_insert_update_recursive = |gameboard: &Gameboard<W, H>, col: usize| {
+    let simulate_move = |gameboard: &Gameboard<W, H>, col: usize| {
         let mut gameboard_clone = gameboard.clone();
         gameboard_clone
             .insert_player_chip(col, current_player)
@@ -28,7 +33,7 @@ fn minmax_step<const W: usize, const H: usize>(
 
         // skip col here, we take the col from the top level
         let (_, score) =
-            _check_move_recursive_minmax(gameboard_clone, target_player, next_player, depth + 1);
+            minmax_search_recursive(gameboard_clone, target_player, next_player, depth + 1);
         (col, score)
     };
 
@@ -39,7 +44,7 @@ fn minmax_step<const W: usize, const H: usize>(
             // rayon wants an owned collection
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|col| fn_insert_update_recursive(gameboard, col))
+            .map(|col| simulate_move(gameboard, col))
             .reduce(
                 || (usize::MAX, initial_score),
                 |acc, (col, score)| {
@@ -56,7 +61,7 @@ fn minmax_step<const W: usize, const H: usize>(
     // Normal recursion
     else {
         for col in gameboard.available_columns_iter() {
-            let (_, score) = fn_insert_update_recursive(gameboard, col);
+            let (_, score) = simulate_move(gameboard, col);
 
             if better_score(score, best_score) {
                 best_score = score;
@@ -68,12 +73,15 @@ fn minmax_step<const W: usize, const H: usize>(
     (best_col, best_score)
 }
 
-/// Max depth, determined experimentally. Single-threaded 8, multi-threaded 9.
+/// Max depth, determined experimentally.
+///
+/// On my machines for a 7x6 board:
+/// - Single-threaded: 8
+/// - Multi-threaded: 9
 const MAX_DEPTH: usize = 9;
 
-/// Recursively minmax logic including the recursion end conditions and evaluation of
-/// winning/losing moves.
-fn _check_move_recursive_minmax<const W: usize, const H: usize>(
+/// Recursive helper for [`minmax_search_recursive`].
+fn minmax_search_recursive<const W: usize, const H: usize>(
     gameboard: Gameboard<W, H>,
     target_player: Player,
     current_player: Player,
@@ -107,7 +115,7 @@ fn _check_move_recursive_minmax<const W: usize, const H: usize>(
     }
 
     if current_player == target_player {
-        minmax_step(
+        search_best_move_in_depth(
             &gameboard,
             target_player,
             current_player,
@@ -117,7 +125,7 @@ fn _check_move_recursive_minmax<const W: usize, const H: usize>(
             &|new, best| new > best,
         )
     } else {
-        minmax_step(
+        search_best_move_in_depth(
             &gameboard,
             target_player,
             current_player,
@@ -129,14 +137,21 @@ fn _check_move_recursive_minmax<const W: usize, const H: usize>(
     }
 }
 
-pub fn check_best_move_recursive_minmax<const W: usize, const H: usize>(
+/// Performs a recursive MinMax search from the given board state.
+///
+/// At each step:
+/// - Checks for terminal conditions (win, loss, draw) and assigns scores.
+/// - Stops recursion at [`MAX_DEPTH`].
+/// - Chooses the best move depending on whether the current player is
+///   maximizing or minimizing the score.
+pub fn minmax_search<const W: usize, const H: usize>(
     gameboard: Gameboard<W, H>,
     current_player: Player,
 ) -> (
     Option<usize>, /* move: col */
     i32,           /* score: pos: moves leading to win, neg: moves leading to loss */
 ) {
-    _check_move_recursive_minmax(gameboard, current_player, current_player, 0)
+    minmax_search_recursive(gameboard, current_player, current_player, 0)
 }
 
 #[cfg(test)]
