@@ -1,4 +1,7 @@
+//! MinMax algorithmic search for Vier gewinnt.
+
 use crate::{Gameboard, Player};
+use alloc::vec::Vec;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
@@ -78,7 +81,7 @@ fn search_best_move_in_depth<const W: usize, const H: usize>(
 /// On my machines for a 7x6 board:
 /// - Single-threaded: 8
 /// - Multi-threaded: 9
-const MAX_DEPTH: usize = 9;
+pub const MAX_DEPTH: usize = 9;
 
 /// Recursive helper for [`minmax_search_recursive`].
 fn minmax_search_recursive<const W: usize, const H: usize>(
@@ -122,7 +125,7 @@ fn minmax_search_recursive<const W: usize, const H: usize>(
             current_player.opponent(),
             depth,
             i32::MIN,
-            &|new, best| new > best,
+            |new, best| new > best,
         )
     } else {
         search_best_move_in_depth(
@@ -132,7 +135,7 @@ fn minmax_search_recursive<const W: usize, const H: usize>(
             current_player.opponent(),
             depth,
             i32::MAX,
-            &|new, best| new < best,
+            |new, best| new < best,
         )
     }
 }
@@ -144,6 +147,7 @@ fn minmax_search_recursive<const W: usize, const H: usize>(
 /// - Stops recursion at [`MAX_DEPTH`].
 /// - Chooses the best move depending on whether the current player is
 ///   maximizing or minimizing the score.
+#[must_use]
 pub fn minmax_search<const W: usize, const H: usize>(
     gameboard: Gameboard<W, H>,
     current_player: Player,

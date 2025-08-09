@@ -1,5 +1,48 @@
+#![deny(
+    clippy::all,
+    clippy::cargo,
+    clippy::nursery,
+    clippy::must_use_candidate,
+    // clippy::restriction,
+    // clippy::pedantic
+)]
+// now allow a few rules which are denied by the above statement
+// --> they are ridiculous and not necessary
+#![allow(
+    clippy::suboptimal_flops,
+    clippy::redundant_pub_crate,
+    clippy::fallible_impl_from
+)]
+#![deny(missing_debug_implementations)]
+#![deny(rustdoc::all)]
+
 use viergewinnt_rs::minmax::minmax_search;
 use viergewinnt_rs::{Gameboard, Player};
+
+fn print_board(board: &Gameboard) {
+    // Print rows reverted to that it appears naturally.
+    for row in board.board.iter().rev() {
+        for col in row.iter() {
+            let symbol = match col {
+                None => ' ',
+                Some(Player::Player1) => 'X',
+                Some(Player::Player2) => 'O',
+            };
+            print!("{symbol},");
+        }
+        println!();
+    }
+
+    for _ in 0..board.width() {
+        print!("--");
+    }
+    println!();
+
+    for col_id in 0..board.width() {
+        print!("{col_id},");
+    }
+    println!();
+}
 
 fn main() {
     let mut board = Gameboard::<7, 6>::new();
@@ -8,7 +51,7 @@ fn main() {
     println!("Let's play viergewinnt against the computer.");
     loop {
         println!("----------------");
-        board.print();
+        print_board(&board);
 
         if board.gameover() {
             println!("Gameover: draft");
@@ -61,5 +104,5 @@ fn main() {
     }
 
     println!("----------------");
-    board.print();
+    print_board(&board);
 }

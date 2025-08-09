@@ -1,8 +1,31 @@
+//! Basic game logic of Vier gewinnt in Rust.
+
+#![no_std]
+#![deny(
+    clippy::all,
+    clippy::cargo,
+    clippy::nursery,
+    clippy::must_use_candidate,
+    // clippy::restriction,
+    // clippy::pedantic
+)]
+// now allow a few rules which are denied by the above statement
+// --> they are ridiculous and not necessary
+#![allow(
+    clippy::suboptimal_flops,
+    clippy::redundant_pub_crate,
+    clippy::fallible_impl_from
+)]
+#![deny(missing_debug_implementations)]
+#![deny(rustdoc::all)]
+
+extern crate alloc;
+
 pub mod minmax;
 
-use std::cmp;
-use std::error::Error;
-use std::fmt::{Debug, Formatter};
+use core::error::Error;
+use core::fmt::{Debug, Formatter};
+use core::{cmp, fmt};
 
 /// Number of coins in a row to win the game.
 const SERIES_LEN: usize = 4;
@@ -25,8 +48,8 @@ pub enum GameboardError {
     InvalidColumn,
 }
 
-impl std::fmt::Display for GameboardError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl fmt::Display for GameboardError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         Debug::fmt(self, f)
     }
 }
@@ -38,11 +61,18 @@ pub struct Gameboard<const W: usize = 7, const H: usize = 6> {
     /// Board: rows --> col --> field
     /// Technical indices correspond to the logical indices:
     ///   (row=0,col=0) <==> bottom left of game board
-    board: [[Option<Player>; W]; H],
+    pub board: [[Option<Player>; W]; H],
+}
+
+impl<const W: usize, const H: usize> Default for Gameboard<W, H> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<const W: usize, const H: usize> Gameboard<W, H> {
-    pub fn new() -> Gameboard<W, H> {
+    #[must_use]
+    pub fn new() -> Self {
         assert!(W >= SERIES_LEN);
         assert!(H >= SERIES_LEN);
 
@@ -54,12 +84,7 @@ impl<const W: usize, const H: usize> Gameboard<W, H> {
     ///
     /// Returns `None` if there are no more free slots.
     fn next_slot_in_column(&self, column_index: usize) -> Option<usize> {
-        for row_index in 0..H {
-            if self.board[row_index][column_index].is_none() {
-                return Some(row_index);
-            }
-        }
-        None
+        (0..H).find(|&row_index| self.board[row_index][column_index].is_none())
     }
 
     /// Emits the column indices where moves are legal.
@@ -68,6 +93,7 @@ impl<const W: usize, const H: usize> Gameboard<W, H> {
     }
 
     /// Returns the number of free slots in the given column.
+    #[must_use]
     pub fn free_slots_in_column(&self, column: usize) -> usize {
         for row in 0..H {
             if self.board[row][column].is_none() {
@@ -78,28 +104,15 @@ impl<const W: usize, const H: usize> Gameboard<W, H> {
     }
 
     /// Returns the number of free slots in total.
+    #[must_use]
     pub fn free_slots_in_total(&self) -> usize {
         (0..W).map(|col| self.free_slots_in_column(col)).sum()
     }
 
     /// Returns whether the game is over, i.e., there are no legal moves.
+    #[must_use]
     pub fn gameover(&self) -> bool {
         self.available_columns_iter().count() == 0
-    }
-
-    pub fn print(&self) {
-        // Print rows reverted to that it appears naturally.
-        for row in self.board.iter().rev() {
-            for col in row.iter() {
-                let symbol = match col {
-                    None => ' ',
-                    Some(Player::Player1) => 'X',
-                    Some(Player::Player2) => 'O',
-                };
-                print!("{symbol},");
-            }
-            println!();
-        }
     }
 
     pub fn insert_player_chip(
@@ -164,7 +177,7 @@ impl<const W: usize, const H: usize> Gameboard<W, H> {
             let d_max = H + W - SERIES_LEN - 1;
 
             for d in d_min..=d_max {
-                let row_begin = if d >= W - 1 { d - (W - 1) } else { 0 };
+                let row_begin = d.saturating_sub(W - 1);
                 let row_end = if d < H { d } else { H - 1 };
 
                 let d_len = row_end - row_begin + 1;
@@ -225,17 +238,20 @@ impl<const W: usize, const H: usize> Gameboard<W, H> {
     }
 
     /// Check if there is a winner.
+    #[must_use]
     pub fn check_for_winner(&self, player: Player) -> bool {
         self.check_for_winner_horizontally(player)
             || self.check_for_winner_vertically(player)
             || self.check_for_winner_diagonally(player)
     }
 
-    pub fn width(&self) -> usize {
+    #[must_use]
+    pub const fn width(&self) -> usize {
         W
     }
 
-    pub fn height(&self) -> usize {
+    #[must_use]
+    pub const fn height(&self) -> usize {
         H
     }
 }
@@ -247,18 +263,22 @@ pub enum Player {
 }
 
 impl Player {
+    #[must_use]
     pub fn opponent(self) -> Self {
-        if self == Player::Player1 {
-            Player::Player2
+        if self == Self::Player1 {
+            Self::Player2
         } else {
-            Player::Player1
+            Self::Player1
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use crate::{Gameboard, Player};
+    use std::vec::Vec;
 
     #[test]
     fn test_next_slot_in_column() {

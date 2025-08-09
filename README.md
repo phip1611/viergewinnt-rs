@@ -6,4 +6,8 @@ computer. The computer performs a minmax search to look for good moves.
 
 ## Run
 
-`$ RUSTFLAGS="-C target-cpu native" cargo run --release`
+To play _Vier gewinnt_ against the computer, run:
+
+`$ cargo run --release`
+
+_(Please note that it takes some time to calculate the moves of the computer.)_
