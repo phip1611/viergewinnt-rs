@@ -16,12 +16,11 @@
 #![deny(missing_debug_implementations)]
 #![deny(rustdoc::all)]
 
-use viergewinnt_rs::minmax::minmax_search;
-use viergewinnt_rs::{Gameboard, Player};
+use viergewinnt_rs::{Game, Gameboard, Player, search_best_move};
 
 fn print_board(board: &Gameboard) {
     // Print rows reverted to that it appears naturally.
-    for row in board.board.iter().rev() {
+    for row in board.board().iter().rev() {
         for col in row.iter() {
             let symbol = match col {
                 None => ' ',
@@ -45,16 +44,16 @@ fn print_board(board: &Gameboard) {
 }
 
 fn main() {
-    let mut board = Gameboard::<7, 6>::new();
+    let mut game = Game::<7, 6>::new();
     let mut current_player = Player::Player1;
 
     println!("Let's play viergewinnt against the computer.");
     loop {
         println!("----------------");
-        print_board(&board);
+        print_board(game.board());
         println!();
 
-        if board.gameover() {
+        if game.board().gameover() {
             println!("Gameover: draft");
             break;
         }
@@ -63,7 +62,7 @@ fn main() {
         if current_player == Player::Player1 {
             {
                 print!("Choose your move (column): ");
-                for col in board.available_columns_iter().map(|x| x + 1) {
+                for col in game.board().available_columns_iter().map(|x| x + 1) {
                     print!("{col},");
                 }
                 println!();
@@ -74,11 +73,13 @@ fn main() {
                 std::io::stdin().read_line(&mut line).unwrap();
                 line.trim().parse::<usize>().unwrap()
             };
+            // adapt to index
+            let line = line - 1;
 
-            board.insert_player_chip(line, current_player).unwrap();
+            game.insert_player_chip(line, current_player).unwrap();
 
             {
-                if board.check_for_winner(current_player) {
+                if game.board().check_for_winner(current_player) {
                     println!("You won!");
                     break;
                 }
@@ -89,13 +90,12 @@ fn main() {
         // Computer player
         else {
             // let best_move = board.legal_moves_iter().next().unwrap();
-            let (best_move, _) = minmax_search::<7, 6>(board.clone(), current_player);
-            let best_move = best_move.expect("should have a possible move");
+            let best_move = search_best_move::<7, 6>(&game, current_player);
             println!("Computer chose column {}", best_move + 1);
-            board.insert_player_chip(best_move, current_player).unwrap();
+            game.insert_player_chip(best_move, current_player).unwrap();
 
             {
-                if board.check_for_winner(current_player) {
+                if game.board().check_for_winner(current_player) {
                     println!("Computer won!");
                     break;
                 }
@@ -106,5 +106,5 @@ fn main() {
     }
 
     println!("----------------");
-    print_board(&board);
+    print_board(game.board());
 }

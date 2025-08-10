@@ -83,6 +83,9 @@ fn search_best_move_in_depth<const W: usize, const H: usize>(
 /// - Multi-threaded: 9
 pub const MAX_DEPTH: usize = 9;
 
+/// Should be more than MAX_DEPTH.
+pub const SCORE_FACTOR: i32 = MAX_DEPTH as i32 + 1;
+
 /// Recursive helper for [`minmax_search_recursive`].
 fn minmax_search_recursive<const W: usize, const H: usize>(
     gameboard: Gameboard<W, H>,
@@ -98,12 +101,18 @@ fn minmax_search_recursive<const W: usize, const H: usize>(
         // Target player wins
         if target_player == current_player && gameboard.check_for_winner(target_player) {
             // schneller Sieg besser
-            return (None /* upper level knows col */, 10 - depth as i32);
+            return (
+                None, /* upper level knows col */
+                SCORE_FACTOR - depth as i32,
+            );
         }
         // Opponent wins
         else if target_player != current_player && gameboard.check_for_winner(current_player) {
             // späte Niederlage "weniger schlimm"
-            return (None /* upper level knows col */, -10 + depth as i32);
+            return (
+                None, /* upper level knows col */
+                -SCORE_FACTOR + depth as i32,
+            );
         }
         // draw
         else if gameboard.gameover() {
@@ -151,12 +160,39 @@ fn minmax_search_recursive<const W: usize, const H: usize>(
 pub fn minmax_search<const W: usize, const H: usize>(
     gameboard: Gameboard<W, H>,
     current_player: Player,
-) -> (
-    Option<usize>, /* move: col */
-    i32,           /* score: pos: moves leading to win, neg: moves leading to loss */
-) {
+) -> usize {
     minmax_search_recursive(gameboard, current_player, current_player, 0)
+        .0
+        .expect("should have legal move")
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::minmax::minmax_search;
+    use crate::{Gameboard, Player};
+
+    #[test]
+    fn test_minmax() {
+        let mut board = Gameboard::<4, 4>::new();
+        board.insert_player_chip(0, Player::Player1).unwrap();
+        board.insert_player_chip(0, Player::Player2).unwrap();
+        board.insert_player_chip(0, Player::Player1).unwrap();
+        board.insert_player_chip(0, Player::Player2).unwrap();
+
+        board.insert_player_chip(1, Player::Player1).unwrap();
+        board.insert_player_chip(1, Player::Player2).unwrap();
+        board.insert_player_chip(1, Player::Player1).unwrap();
+        board.insert_player_chip(1, Player::Player2).unwrap();
+
+        board.insert_player_chip(2, Player::Player1).unwrap();
+        board.insert_player_chip(2, Player::Player1).unwrap();
+        board.insert_player_chip(2, Player::Player1).unwrap();
+
+        board.insert_player_chip(3, Player::Player2).unwrap();
+        board.insert_player_chip(3, Player::Player2).unwrap();
+        board.insert_player_chip(3, Player::Player2).unwrap();
+
+        let best_move = minmax_search(board, Player::Player1);
+        assert_eq!(best_move, 2);
+    }
+}
