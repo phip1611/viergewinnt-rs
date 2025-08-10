@@ -38,7 +38,7 @@ fn print_board(board: &Gameboard) {
     }
     println!();
 
-    for col_id in 0..board.width() {
+    for col_id in (0..board.width()).map(|i| i + 1) {
         print!("{col_id},");
     }
     println!();
@@ -52,6 +52,7 @@ fn main() {
     loop {
         println!("----------------");
         print_board(&board);
+        println!();
 
         if board.gameover() {
             println!("Gameover: draft");
@@ -62,7 +63,7 @@ fn main() {
         if current_player == Player::Player1 {
             {
                 print!("Choose your move (column): ");
-                for col in board.available_columns_iter() {
+                for col in board.available_columns_iter().map(|x| x + 1) {
                     print!("{col},");
                 }
                 println!();
@@ -90,6 +91,7 @@ fn main() {
             // let best_move = board.legal_moves_iter().next().unwrap();
             let (best_move, _) = minmax_search::<7, 6>(board.clone(), current_player);
             let best_move = best_move.expect("should have a possible move");
+            println!("Computer chose column {}", best_move + 1);
             board.insert_player_chip(best_move, current_player).unwrap();
 
             {
