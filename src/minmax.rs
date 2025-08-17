@@ -5,6 +5,22 @@ use alloc::vec::Vec;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
+/// Max depth, determined experimentally.
+///
+/// On my machines for a 7x6 board:
+/// - Single-threaded: 8
+/// - Multi-threaded: 9
+pub const MAX_DEPTH: usize = 10;
+
+/// Inclusive cutoff depth.
+///
+/// Assuming cols=7 and cutoff=2: 7 + 7² + 7³ == 7 + 49 + 343 == 699 Threads.
+///
+/// The Overhead of these many threads is negligible compared to the time it
+/// takes to walk the search tree. This way, the program can easily use
+/// hundreds of cors on big machines.
+const PARALLEL_CUTOFF_DEPTH: usize = 2;
+
 /// Searches for the best possible move for the current player at the given
 /// search depth using the minimax algorithm, with optional parallelization at
 /// the top search level.
@@ -41,7 +57,7 @@ fn search_best_move_in_depth<const W: usize, const H: usize>(
     };
 
     // top level: parallelize work
-    if depth == 0 {
+    if depth <= PARALLEL_CUTOFF_DEPTH {
         let reduced = gameboard
             .available_columns_iter()
             // rayon wants an owned collection
@@ -76,12 +92,6 @@ fn search_best_move_in_depth<const W: usize, const H: usize>(
     (best_col, best_score)
 }
 
-/// Max depth, determined experimentally.
-///
-/// On my machines for a 7x6 board:
-/// - Single-threaded: 8
-/// - Multi-threaded: 9
-pub const MAX_DEPTH: usize = 9;
 
 /// Should be more than MAX_DEPTH.
 pub const SCORE_FACTOR: i32 = MAX_DEPTH as i32 + 1;
